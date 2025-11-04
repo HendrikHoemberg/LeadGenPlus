@@ -83,6 +83,7 @@ function App() {
       pdfData,
     };
 
+    // Save to history (all queries including generated ones)
     const savedQueries = localStorage.getItem('savedQueries');
     const queries = savedQueries ? JSON.parse(savedQueries) : [];
     queries.unshift(query);
@@ -95,7 +96,18 @@ function App() {
       return;
     }
 
-    saveQuery();
+    // Save manually to the "Saved Queries" section (without PDF data)
+    const query: LeadQuery = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      ...formData,
+    };
+
+    const manualSavedQueries = localStorage.getItem('manualSavedQueries');
+    const queries = manualSavedQueries ? JSON.parse(manualSavedQueries) : [];
+    queries.unshift(query);
+    localStorage.setItem('manualSavedQueries', JSON.stringify(queries));
+
     setSuccess('Query saved successfully!');
     setTimeout(() => setSuccess(''), 3000);
   };

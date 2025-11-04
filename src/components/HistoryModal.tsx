@@ -17,8 +17,11 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
     if (isOpen) {
       const savedQueries = localStorage.getItem('savedQueries');
       if (savedQueries) {
-        // Show all queries (saved and generated)
-        setQueries(JSON.parse(savedQueries));
+        // Show only queries with PDF data (generated results)
+        const allQueries: LeadQuery[] = JSON.parse(savedQueries);
+        setQueries(allQueries.filter(q => q.pdfData));
+      } else {
+        setQueries([]);
       }
     }
   }, [isOpen]);
@@ -56,7 +59,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
         </h2>
 
         <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          All your saved and generated queries. Use "Saved" button for queries with generated results.
+          All queries that have been generated with results. Use "Saved" for manually saved queries.
         </p>
 
         <div className="flex-1 overflow-y-auto space-y-4">
@@ -65,8 +68,8 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
               <svg className="mx-auto h-16 w-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-lg">No queries yet</p>
-              <p className="text-sm mt-2">Save or generate queries to see them here</p>
+              <p className="text-lg">No generated queries yet</p>
+              <p className="text-sm mt-2">Generate leads to see them here</p>
             </div>
           ) : (
             queries.map((query) => (
@@ -88,20 +91,12 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
                     </h3>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    query.pdfData
-                      ? darkMode ? 'bg-green-600/20 text-green-400' : 'bg-green-100 text-green-700'
-                      : darkMode ? 'bg-gray-600/20 text-gray-400' : 'bg-gray-200 text-gray-600'
+                    darkMode ? 'bg-green-600/20 text-green-400' : 'bg-green-100 text-green-700'
                   }`}>
-                    {query.pdfData ? (
-                      <>
-                        <svg className="w-3 h-3 inline-block mr-1" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        Generated
-                      </>
-                    ) : (
-                      'Saved Only'
-                    )}
+                    <svg className="w-3 h-3 inline-block mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Generated
                   </div>
                 </div>
                 
@@ -133,20 +128,18 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
                         : 'bg-blue-500 text-white hover:bg-blue-600'
                     }`}
                   >
-                    Load
+                    Load Query
                   </button>
-                  {query.pdfData && (
-                    <button
-                      onClick={() => handleExport(query)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        darkMode
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'bg-green-500 text-white hover:bg-green-600'
-                      }`}
-                    >
-                      Export
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleExport(query)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      darkMode
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-green-500 text-white hover:bg-green-600'
+                    }`}
+                  >
+                    Download PDF
+                  </button>
                   <button
                     onClick={() => handleDelete(query.id)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${

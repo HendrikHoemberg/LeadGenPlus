@@ -1,7 +1,6 @@
 import React from 'react';
 import { useSettings } from '../context/useSettings';
 import type { LeadQuery } from '../types';
-import { downloadPDF } from '../utils/claudeAPI';
 
 interface SavedQueriesModalProps {
   isOpen: boolean;
@@ -15,30 +14,28 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
 
   React.useEffect(() => {
     if (isOpen) {
-      const savedQueries = localStorage.getItem('savedQueries');
-      if (savedQueries) {
-        // Only show queries with PDF data (completed generations)
-        const allQueries: LeadQuery[] = JSON.parse(savedQueries);
-        setQueries(allQueries.filter(q => q.pdfData));
+      const manualSavedQueries = localStorage.getItem('manualSavedQueries');
+      if (manualSavedQueries) {
+        // Only show manually saved queries
+        const allQueries: LeadQuery[] = JSON.parse(manualSavedQueries);
+        setQueries(allQueries);
+      } else {
+        setQueries([]);
       }
     }
   }, [isOpen]);
 
   const handleDelete = (id: string) => {
-    const savedQueries = localStorage.getItem('savedQueries');
-    if (savedQueries) {
-      const allQueries: LeadQuery[] = JSON.parse(savedQueries);
+    const manualSavedQueries = localStorage.getItem('manualSavedQueries');
+    if (manualSavedQueries) {
+      const allQueries: LeadQuery[] = JSON.parse(manualSavedQueries);
       const updatedQueries = allQueries.filter(q => q.id !== id);
-      localStorage.setItem('savedQueries', JSON.stringify(updatedQueries));
-      setQueries(updatedQueries.filter(q => q.pdfData));
+      localStorage.setItem('manualSavedQueries', JSON.stringify(updatedQueries));
+      setQueries(updatedQueries);
     }
   };
 
-  const handleExport = (query: LeadQuery) => {
-    if (query.pdfData) {
-      downloadPDF(query.pdfData, `leads_${query.id}.pdf`);
-    }
-  };
+
 
   if (!isOpen) return null;
 
@@ -66,8 +63,8 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
               <svg className="mx-auto h-16 w-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
-              <p className="text-lg">No saved queries with results yet</p>
-              <p className="text-sm mt-2">Generate leads to save them here</p>
+              <p className="text-lg">No saved queries yet</p>
+              <p className="text-sm mt-2">Click "Save Query" to save your search parameters here</p>
             </div>
           ) : (
             queries.map((query) => (
@@ -89,12 +86,12 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
                     </h3>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    darkMode ? 'bg-green-600/20 text-green-400' : 'bg-green-100 text-green-700'
+                    darkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-700'
                   }`}>
-                    <svg className="w-3 h-3 inline-block mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg className="w-3 h-3 inline-block mr-1" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                     </svg>
-                    Generated
+                    Saved
                   </div>
                 </div>
                 
@@ -133,16 +130,6 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
                     }`}
                   >
                     Load Query
-                  </button>
-                  <button
-                    onClick={() => handleExport(query)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      darkMode
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-green-500 text-white hover:bg-green-600'
-                    }`}
-                  >
-                    Download PDF
                   </button>
                   <button
                     onClick={() => handleDelete(query.id)}
