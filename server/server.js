@@ -455,8 +455,11 @@ function renderMarkdownToPDF(doc, markdown) {
     
     if (trimmedLine.match(/^##\s+(.+)/)) {
       if (inList) { inList = false; listIndent = 0; }
-      const headerText = trimmedLine.replace(/^##\s+/, '');
+      let headerText = trimmedLine.replace(/^##\s+/, '');
       leadCount++;
+      
+      // Remove "Lead X:" prefix if present (since we show the number in a badge)
+      headerText = headerText.replace(/^Lead\s+\d+:\s*/, '');
       
       // Estimate the height needed for this lead (header + typical content)
       // Look ahead to count bullet points for this lead
