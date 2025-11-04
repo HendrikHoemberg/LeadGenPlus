@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSettings } from '../context/useSettings';
-import type { AIProvider, GeminiModel } from '../types';
+import { useTranslation } from '../translations';
+import type { AIProvider, GeminiModel, Language } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -18,26 +19,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     geminiModel,
     setGeminiModel,
     darkMode, 
-    toggleDarkMode 
+    toggleDarkMode,
+    language,
+    setLanguage
   } = useSettings();
+  
+  const t = useTranslation(language);
   
   const [tempApiKey, setTempApiKey] = React.useState(apiKey);
   const [tempGeminiApiKey, setTempGeminiApiKey] = React.useState(geminiApiKey);
   const [tempAiProvider, setTempAiProvider] = React.useState<AIProvider>(aiProvider);
   const [tempGeminiModel, setTempGeminiModel] = React.useState<GeminiModel>(geminiModel);
+  const [tempLanguage, setTempLanguage] = React.useState<Language>(language);
 
   React.useEffect(() => {
     setTempApiKey(apiKey);
     setTempGeminiApiKey(geminiApiKey);
     setTempAiProvider(aiProvider);
     setTempGeminiModel(geminiModel);
-  }, [apiKey, geminiApiKey, aiProvider, geminiModel]);
+    setTempLanguage(language);
+  }, [apiKey, geminiApiKey, aiProvider, geminiModel, language]);
 
   const handleSave = () => {
     setApiKey(tempApiKey);
     setGeminiApiKey(tempGeminiApiKey);
     setAiProvider(tempAiProvider);
     setGeminiModel(tempGeminiModel);
+    setLanguage(tempLanguage);
     onClose();
   };
 
@@ -58,14 +66,53 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         </button>
 
         <h2 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Settings
+          {t.settingsTitle}
         </h2>
 
         <div className="space-y-6">
+          {/* Language Selection */}
+          <div>
+            <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              {t.language}
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setTempLanguage('en')}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                  tempLanguage === 'en'
+                    ? darkMode
+                      ? 'bg-green-600 text-white border-2 border-green-500'
+                      : 'bg-green-500 text-white border-2 border-green-600'
+                    : darkMode
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-2 border-gray-600'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
+                }`}
+              >
+                {t.english}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTempLanguage('de')}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                  tempLanguage === 'de'
+                    ? darkMode
+                      ? 'bg-green-600 text-white border-2 border-green-500'
+                      : 'bg-green-500 text-white border-2 border-green-600'
+                    : darkMode
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-2 border-gray-600'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
+                }`}
+              >
+                {t.german}
+              </button>
+            </div>
+          </div>
+
           {/* AI Provider Selection */}
           <div>
             <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              AI Provider
+              {t.aiProvider}
             </label>
             <div className="flex gap-3">
               <button
@@ -81,7 +128,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
                 }`}
               >
-                🤖 Claude (Anthropic)
+                {t.claudeProvider}
               </button>
               <button
                 type="button"
@@ -96,7 +143,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
                 }`}
               >
-                ✨ Gemini (Google)
+                {t.geminiProvider}
               </button>
             </div>
           </div>
@@ -105,13 +152,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           {tempAiProvider === 'claude' && (
             <div>
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Anthropic API Key
+                {t.anthropicApiKey}
               </label>
               <input
                 type="password"
                 value={tempApiKey}
                 onChange={(e) => setTempApiKey(e.target.value)}
-                placeholder="sk-ant-..."
+                placeholder={t.apiKeyPlaceholder}
                 className={`w-full px-4 py-3 rounded-lg border-2 transition-all ${
                   darkMode
                     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500'
@@ -119,7 +166,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 } focus:outline-none focus:ring-2 focus:ring-purple-500/20`}
               />
               <p className={`mt-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Your API key is stored locally in your browser
+                {t.apiKeyStoredLocally}
               </p>
             </div>
           )}
@@ -129,13 +176,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <>
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Google Gemini API Key
+                  {t.geminiApiKey}
                 </label>
                 <input
                   type="password"
                   value={tempGeminiApiKey}
                   onChange={(e) => setTempGeminiApiKey(e.target.value)}
-                  placeholder="AIza..."
+                  placeholder={t.geminiApiKeyPlaceholder}
                   className={`w-full px-4 py-3 rounded-lg border-2 transition-all ${
                     darkMode
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500'
@@ -143,13 +190,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                 />
                 <p className={`mt-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Get your free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Google AI Studio</a>
+                  {t.getGeminiKey} <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Google AI Studio</a>
                 </p>
               </div>
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Gemini Model
+                  {t.geminiModel}
                 </label>
                 <div className="flex gap-3">
                   <button
@@ -165,7 +212,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    ⚡ Flash (Faster)
+                    {t.flashModel}
                   </button>
                   <button
                     type="button"
@@ -180,11 +227,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    🧠 Pro (Better)
+                    {t.proModel}
                   </button>
                 </div>
                 <p className={`mt-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {tempGeminiModel === 'gemini-2.5-flash' ? 'Fast and efficient for most tasks' : 'More capable for complex queries'}
+                  {tempGeminiModel === 'gemini-2.5-flash' ? t.flashModelDesc : t.proModelDesc}
                 </p>
               </div>
             </>
@@ -193,7 +240,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           {/* Dark Mode Toggle */}
           <div className="flex items-center justify-between pt-4 border-t border-gray-600">
             <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Dark Mode
+              {t.darkMode}
             </span>
             <button
               onClick={toggleDarkMode}
@@ -219,13 +266,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
             }`}
           >
-            Cancel
+            {t.cancel}
           </button>
           <button
             onClick={handleSave}
             className="flex-1 px-6 py-3 rounded-lg font-medium bg-linear-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
           >
-            Save
+            {t.save}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSettings } from '../context/useSettings';
+import { useTranslation } from '../translations';
 import type { LeadQuery } from '../types';
 
 interface SavedQueriesModalProps {
@@ -9,7 +10,8 @@ interface SavedQueriesModalProps {
 }
 
 const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, onLoadQuery }) => {
-  const { darkMode } = useSettings();
+  const { darkMode, language } = useSettings();
+  const t = useTranslation(language);
   const [queries, setQueries] = React.useState<LeadQuery[]>([]);
 
   React.useEffect(() => {
@@ -54,7 +56,7 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
         </button>
 
         <h2 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Saved Queries
+          {t.savedQueriesTitle}
         </h2>
 
         <div className="flex-1 overflow-y-auto space-y-4">
@@ -63,8 +65,8 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
               <svg className="mx-auto h-16 w-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
-              <p className="text-lg">No saved queries yet</p>
-              <p className="text-sm mt-2">Click "Save Query" to save your search parameters here</p>
+              <p className="text-lg">{t.noSavedQueries}</p>
+              <p className="text-sm mt-2">{t.noSavedQueriesDesc}</p>
             </div>
           ) : (
             queries.map((query) => (
@@ -91,29 +93,29 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
                     <svg className="w-3 h-3 inline-block mr-1" fill="none" viewBox="0 0 20 20" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                     </svg>
-                    Saved
+                    {t.saved}
                   </div>
                 </div>
                 
                 <div className={`text-sm space-y-1 mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <p><span className="font-medium">Locations:</span> {query.locations.join(', ')}</p>
-                  <p><span className="font-medium">Industries:</span> {query.industry.join(', ')}</p>
+                  <p><span className="font-medium">{t.locations}:</span> {query.locations.join(', ')}</p>
+                  <p><span className="font-medium">{t.industries}:</span> {query.industry.join(', ')}</p>
                   <p>
-                    <span className="font-medium">Company Size:</span> {query.companySizeMin || 'Any'} - {query.companySizeMax || 'Any'} employees
+                    <span className="font-medium">{t.companySize}:</span> {query.companySizeMin || t.any} - {query.companySizeMax || t.any} {t.employees}
                   </p>
                   {query.personas.length > 0 && (
-                    <p><span className="font-medium">Personas:</span> {query.personas.join(', ')}</p>
+                    <p><span className="font-medium">{t.personas}:</span> {query.personas.join(', ')}</p>
                   )}
                   {query.searchMode && (
                     <p>
-                      <span className="font-medium">Search Mode:</span>{' '}
+                      <span className="font-medium">{t.searchMode}:</span>{' '}
                       <span className={query.searchMode === 'accurate' ? 'text-blue-500' : 'text-purple-500'}>
-                        {query.searchMode === 'accurate' ? '🎯 Accurate' : '🔍 Loose'}
+                        {query.searchMode === 'accurate' ? t.searchModeAccurate : t.searchModeLoose}
                       </span>
                     </p>
                   )}
                   {query.maxResults && (
-                    <p><span className="font-medium">Max Results:</span> {query.maxResults}</p>
+                    <p><span className="font-medium">{t.maxResults}:</span> {query.maxResults}</p>
                   )}
                 </div>
 
@@ -129,7 +131,7 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
                         : 'bg-blue-500 text-white hover:bg-blue-600'
                     }`}
                   >
-                    Load Query
+                    {t.loadQuery}
                   </button>
                   <button
                     onClick={() => handleDelete(query.id)}
@@ -139,7 +141,7 @@ const SavedQueriesModal: React.FC<SavedQueriesModalProps> = ({ isOpen, onClose, 
                         : 'bg-red-500 text-white hover:bg-red-600'
                     }`}
                   >
-                    Delete
+                    {t.delete}
                   </button>
                 </div>
               </div>

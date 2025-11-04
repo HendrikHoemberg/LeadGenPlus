@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import React, { useEffect, useState } from 'react';
-import type { AIProvider, GeminiModel } from '../types';
+import type { AIProvider, GeminiModel, Language } from '../types';
 import { SettingsContext } from './SettingsContext.ts';
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -9,6 +9,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [aiProvider, setAiProviderState] = useState<AIProvider>('gemini');
   const [geminiModel, setGeminiModelState] = useState<GeminiModel>('gemini-2.5-pro');
   const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem('anthropic_api_key');
@@ -34,6 +35,15 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     const savedDarkMode = localStorage.getItem('dark_mode');
     if (savedDarkMode !== null) {
       setDarkMode(savedDarkMode === 'true');
+    }
+
+    const savedLanguage = localStorage.getItem('language');
+    if (savedLanguage === 'en' || savedLanguage === 'de') {
+      setLanguageState(savedLanguage);
+    } else {
+      // If no language is saved, default to English and save it
+      localStorage.setItem('language', 'en');
+      setLanguageState('en');
     }
   }, []);
 
@@ -65,6 +75,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     });
   };
 
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('language', lang);
+  };
+
   return (
     <SettingsContext.Provider value={{ 
       apiKey, 
@@ -76,7 +91,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       geminiModel,
       setGeminiModel,
       darkMode, 
-      toggleDarkMode 
+      toggleDarkMode,
+      language,
+      setLanguage
     }}>
       {children}
     </SettingsContext.Provider>

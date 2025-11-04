@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSettings } from '../context/useSettings';
+import { useTranslation } from '../translations';
 import type { OutputField } from '../types';
 
 interface OutputFieldsManagerProps {
@@ -8,7 +9,8 @@ interface OutputFieldsManagerProps {
 }
 
 const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFieldsChange }) => {
-  const { darkMode } = useSettings();
+  const { darkMode, language } = useSettings();
+  const t = useTranslation(language);
   const [newFieldLabel, setNewFieldLabel] = useState('');
 
   const toggleField = (id: string) => {
@@ -64,7 +66,7 @@ const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFie
   return (
     <div>
       <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-        Wanted Information per Lead
+        {t.wantedInformation}
       </label>
       
       <div className={`rounded-lg border-2 p-4 space-y-2 ${
@@ -100,7 +102,7 @@ const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFie
               </span>
 
               {/* Required Checkbox */}
-              <div className="flex items-center gap-1" title="Required for accurate search">
+              <div className="flex items-center gap-1" title={`${t.required} for accurate search`}>
                 <input
                   type="checkbox"
                   checked={field.required}
@@ -113,7 +115,7 @@ const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFie
                 <span className={`text-xs font-medium ${
                   darkMode ? 'text-gray-400' : 'text-gray-600'
                 } ${!field.enabled ? 'opacity-30' : ''}`}>
-                  Required
+                  {t.required}
                 </span>
               </div>
 
@@ -130,7 +132,7 @@ const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFie
                         ? 'hover:bg-gray-500'
                         : 'hover:bg-gray-200'
                   }`}
-                  title="Nach oben"
+                  title={t.moveUp}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -147,7 +149,7 @@ const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFie
                         ? 'hover:bg-gray-500'
                         : 'hover:bg-gray-200'
                   }`}
-                  title="Nach unten"
+                  title={t.moveDown}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -164,7 +166,7 @@ const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFie
                     ? 'hover:bg-red-600/50 text-red-400'
                     : 'hover:bg-red-100 text-red-600'
                 }`}
-                title="Entfernen"
+                title={t.remove}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -181,7 +183,7 @@ const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFie
             value={newFieldLabel}
             onChange={(e) => setNewFieldLabel(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Neues Feld hinzufügen..."
+            placeholder={t.addNewField}
             className={`flex-1 px-3 py-2 rounded-lg border transition-all ${
               darkMode
                 ? 'bg-gray-600 border-gray-500 text-white placeholder-gray-400 focus:border-blue-500'
@@ -208,7 +210,7 @@ const OutputFieldsManager: React.FC<OutputFieldsManagerProps> = ({ fields, onFie
       </div>
       
       <p className={`mt-1 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-        Check "Required" to make fields mandatory for accurate search mode
+        {t.requiredFieldsInfo}
       </p>
     </div>
   );

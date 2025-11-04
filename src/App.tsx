@@ -1,31 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import HistoryModal from './components/HistoryModal';
 import OutputFieldsManager from './components/OutputFieldsManager';
 import SavedQueriesModal from './components/SavedQueriesModal';
 import SettingsModal from './components/SettingsModal';
 import TagInput from './components/TagInput';
 import { useSettings } from './context/useSettings';
+import { getDefaultOutputFields, useTranslation } from './translations';
 import type { FormData, LeadQuery, OutputField } from './types';
 import { downloadPDF, generateLeads } from './utils/apiService';
 
-const DEFAULT_OUTPUT_FIELDS: OutputField[] = [
-  { id: '1', label: 'Unternehmensname', enabled: true, required: true },
-  { id: '2', label: 'Ansprechpartner (Vor- & Nachname)', enabled: true, required: true },
-  { id: '3', label: 'Position (z. B. HR-Manager, Marketingleiter)', enabled: true, required: false },
-  { id: '4', label: 'Telefonnummer (mit Durchwahl, falls vorhanden)', enabled: true, required: false },
-  { id: '5', label: 'persönliche E-Mail-Adresse ansonsten info@beispiel.com', enabled: true, required: false },
-  { id: '6', label: 'Ort', enabled: true, required: false },
-  { id: '7', label: 'Website', enabled: true, required: false },
-];
-
 function App() {
-  const { apiKey, geminiApiKey, aiProvider, geminiModel, darkMode } = useSettings();
+  const { apiKey, geminiApiKey, aiProvider, geminiModel, darkMode, language } = useSettings();
+  const t = useTranslation(language);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savedQueriesOpen, setSavedQueriesOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     companyDescription: '',
@@ -35,10 +28,37 @@ function App() {
     companySizeMax: '',
     personas: [],
     additionalCriteria: '',
-    outputFields: DEFAULT_OUTPUT_FIELDS,
+    outputFields: [],
     searchMode: 'accurate',
     maxResults: 10,
   });
+
+  // Initialize output fields with correct language on first load
+  useEffect(() => {
+    if (!isInitialized) {
+      setFormData(prev => ({
+        ...prev,
+        outputFields: getDefaultOutputFields(language).map((field, index) => ({
+          id: (index + 1).toString(),
+          ...field
+        }))
+      }));
+      setIsInitialized(true);
+    }
+  }, [language, isInitialized]);
+
+  // Update output fields when language changes (after initialization)
+  useEffect(() => {
+    if (isInitialized) {
+      setFormData(prev => ({
+        ...prev,
+        outputFields: getDefaultOutputFields(language).map((field, index) => ({
+          id: (index + 1).toString(),
+          ...field
+        }))
+      }));
+    }
+  }, [language, isInitialized]);
 
   const handleInputChange = (field: keyof FormData, value: string | string[] | OutputField[] | number | 'accurate' | 'loose') => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -69,7 +89,10 @@ function App() {
       companySizeMax: query.companySizeMax,
       personas: query.personas,
       additionalCriteria: query.additionalCriteria,
-      outputFields: query.outputFields || DEFAULT_OUTPUT_FIELDS,
+      outputFields: query.outputFields || getDefaultOutputFields(language).map((field, index) => ({
+        id: (index + 1).toString(),
+        ...field
+      })),
       searchMode: query.searchMode || 'accurate',
       maxResults: query.maxResults || 10,
     });
@@ -92,7 +115,7 @@ function App() {
 
   const handleSaveQuery = () => {
     if (!formData.companyDescription || formData.locations.length === 0 || formData.industry.length === 0) {
-      setError('Please fill in all required fields before saving');
+      setError(t.fillRequiredFieldsSave);
       return;
     }
 
@@ -108,7 +131,7 @@ function App() {
     queries.unshift(query);
     localStorage.setItem('manualSavedQueries', JSON.stringify(queries));
 
-    setSuccess('Query saved successfully!');
+    setSuccess(t.querySavedSuccess);
     setTimeout(() => setSuccess(''), 3000);
   };
 
@@ -118,12 +141,12 @@ function App() {
     const providerName = aiProvider === 'claude' ? 'Anthropic' : 'Google Gemini';
     
     if (!currentApiKey) {
-      setError(`Please set your ${providerName} API key in Settings`);
+      setError(t.setApiKeyError(providerName));
       return;
     }
 
     if (!formData.companyDescription || formData.locations.length === 0 || formData.industry.length === 0) {
-      setError('Please fill in all required fields');
+      setError(t.fillRequiredFields);
       return;
     }
 
@@ -136,9 +159,9 @@ function App() {
       saveQuery(result.pdfBase64);
       downloadPDF(result.pdfBase64, `leads_${Date.now()}.pdf`);
       
-      let successMessage = `Leads generated successfully with ${providerName}! Check your downloads.`;
+      let successMessage = t.leadsGeneratedSuccess(providerName);
       if (formData.searchMode === 'accurate') {
-        successMessage += ' (Accurate mode: Only complete leads with all required fields included)';
+        successMessage += t.accurateModeNote;
       }
       
       setSuccess(successMessage);
@@ -163,10 +186,10 @@ function App() {
               </div>
               <div>
                 <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  LeadGen Plus
+                  {t.appName}
                 </h1>
                 <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  AI-Powered Lead Generation
+                  {t.appSubtitle}
                 </p>
               </div>
             </div>
@@ -183,7 +206,7 @@ function App() {
                 <svg className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
-                Saved
+                {t.savedButton}
               </button>
               <button
                 onClick={() => setHistoryOpen(true)}
@@ -196,7 +219,7 @@ function App() {
                 <svg className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                History
+                {t.historyButton}
               </button>
               <button
                 onClick={() => setSettingsOpen(true)}
@@ -210,7 +233,7 @@ function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Settings
+                {t.settingsButton}
               </button>
             </div>
           </div>
@@ -221,19 +244,19 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className={`rounded-2xl shadow-2xl p-8 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
           <h2 className={`text-2xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Lead Generation Form
+            {t.formTitle}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Company Description */}
             <div className="md:col-span-2">
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Company Description *
+                {t.companyDescription} {t.requiredMarker}
               </label>
               <textarea
                 value={formData.companyDescription}
                 onChange={(e) => handleInputChange('companyDescription', e.target.value)}
-                placeholder="Describe your company and what you offer..."
+                placeholder={t.companyDescriptionPlaceholder}
                 rows={4}
                 className={`w-full px-4 py-3 rounded-lg border-2 transition-all ${
                   darkMode
@@ -246,8 +269,8 @@ function App() {
             {/* Locations */}
             <div className="md:col-span-2">
               <TagInput
-                label="Target Locations"
-                placeholder="e.g., New York, California, Germany..."
+                label={t.targetLocations}
+                placeholder={t.locationsPlaceholder}
                 tags={formData.locations}
                 onAddTag={(value) => handleAddTag('locations', value)}
                 onRemoveTag={(index) => handleRemoveTag('locations', index)}
@@ -258,8 +281,8 @@ function App() {
             {/* Industry */}
             <div className="md:col-span-2">
               <TagInput
-                label="Industries"
-                placeholder="e.g., Technology, Healthcare, Finance..."
+                label={t.industries}
+                placeholder={t.industriesPlaceholder}
                 tags={formData.industry}
                 onAddTag={(value) => handleAddTag('industry', value)}
                 onRemoveTag={(index) => handleRemoveTag('industry', index)}
@@ -270,13 +293,13 @@ function App() {
             {/* Company Size */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Company Size (Min)
+                {t.companySizeMin}
               </label>
               <input
                 type="number"
                 value={formData.companySizeMin}
                 onChange={(e) => handleInputChange('companySizeMin', e.target.value)}
-                placeholder="e.g., 10"
+                placeholder={t.companySizePlaceholder}
                 min="0"
                 className={`w-full px-4 py-3 rounded-lg border-2 transition-all ${
                   darkMode
@@ -288,13 +311,13 @@ function App() {
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Company Size (Max)
+                {t.companySizeMax}
               </label>
               <input
                 type="number"
                 value={formData.companySizeMax}
                 onChange={(e) => handleInputChange('companySizeMax', e.target.value)}
-                placeholder="e.g., 500"
+                placeholder={t.companySizePlaceholder}
                 min="0"
                 className={`w-full px-4 py-3 rounded-lg border-2 transition-all ${
                   darkMode
@@ -307,8 +330,8 @@ function App() {
             {/* Personas */}
             <div className="md:col-span-2">
               <TagInput
-                label="Target Personas"
-                placeholder="e.g., CEO, CTO, Marketing Director..."
+                label={t.targetPersonas}
+                placeholder={t.personasPlaceholder}
                 tags={formData.personas}
                 onAddTag={(value) => handleAddTag('personas', value)}
                 onRemoveTag={(index) => handleRemoveTag('personas', index)}
@@ -318,12 +341,12 @@ function App() {
             {/* Additional Criteria */}
             <div className="md:col-span-2">
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Additional Criteria
+                {t.additionalCriteria}
               </label>
               <textarea
                 value={formData.additionalCriteria}
                 onChange={(e) => handleInputChange('additionalCriteria', e.target.value)}
-                placeholder="Any other specific requirements..."
+                placeholder={t.additionalCriteriaPlaceholder}
                 rows={3}
                 className={`w-full px-4 py-3 rounded-lg border-2 transition-all ${
                   darkMode
@@ -349,14 +372,14 @@ function App() {
                   : 'bg-white border-gray-300'
               }`}>
                 <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Search Settings
+                  {t.searchSettings}
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Search Mode */}
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Search Mode
+                      {t.searchMode}
                     </label>
                     <div className="flex gap-2">
                       <button
@@ -372,7 +395,7 @@ function App() {
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                       >
-                        🎯 Accurate
+                        {t.searchModeAccurate}
                       </button>
                       <button
                         type="button"
@@ -387,20 +410,20 @@ function App() {
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                       >
-                        🔍 Loose
+                        {t.searchModeLoose}
                       </button>
                     </div>
                     <p className={`mt-1 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                       {formData.searchMode === 'accurate' 
-                        ? 'Only leads with all required fields' 
-                        : 'Include partial matches'}
+                        ? t.searchModeAccurateDesc
+                        : t.searchModeLooseDesc}
                     </p>
                   </div>
 
                   {/* Max Results */}
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Max Results
+                      {t.maxResults}
                     </label>
                     <input
                       type="number"
@@ -415,7 +438,7 @@ function App() {
                       } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                     />
                     <p className={`mt-1 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Limit: 1-50 leads (controls token usage)
+                      {t.maxResultsDesc}
                     </p>
                   </div>
                 </div>
@@ -435,14 +458,14 @@ function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="flex-1">
-                  <p className="font-medium text-sm">Accurate Search Mode Active</p>
+                  <p className="font-medium text-sm">{t.accurateSearchActive}</p>
                   <p className="text-xs mt-1 opacity-90">
                     {(() => {
                       const requiredFields = formData.outputFields.filter(f => f.enabled && f.required);
                       if (requiredFields.length === 0) {
-                        return 'No required fields specified. All enabled fields are optional. Switch to "Loose" mode or mark fields as required.';
+                        return t.noRequiredFields;
                       }
-                      return `Only leads with these required fields will be included: ${requiredFields.map(f => f.label).join(', ')}. Other fields are optional.`;
+                      return t.requiredFieldsList(requiredFields.map(f => f.label).join(', '));
                     })()}
                   </p>
                 </div>
@@ -479,7 +502,7 @@ function App() {
               <svg className="w-6 h-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
-              Save Query
+              {t.saveQuery}
             </button>
             <button
               onClick={handleGenerateLeads}
@@ -496,10 +519,10 @@ function App() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generating Leads...
+                  {t.generatingLeads}
                 </span>
               ) : (
-                'Generate Leads'
+                t.generateLeads
               )}
             </button>
           </div>

@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react';
 import React, { useState } from 'react';
 import { useSettings } from '../context/useSettings';
+import { useTranslation } from '../translations';
 
 interface TagInputProps {
   label: string;
@@ -19,7 +20,8 @@ const TagInput: React.FC<TagInputProps> = ({
   onRemoveTag,
   required = false 
 }) => {
-  const { darkMode } = useSettings();
+  const { darkMode, language } = useSettings();
+  const t = useTranslation(language);
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -44,7 +46,7 @@ const TagInput: React.FC<TagInputProps> = ({
   return (
     <div>
       <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-        {label} {required && '*'}
+        {label} {required && t.requiredMarker}
       </label>
       <div className={`flex flex-wrap gap-2 p-3 rounded-lg border-2 transition-all ${
         darkMode
@@ -87,7 +89,7 @@ const TagInput: React.FC<TagInputProps> = ({
         />
       </div>
       <p className={`mt-1 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-        Press Enter or comma to add, Backspace to remove
+        {t.tagInputHelp}
       </p>
     </div>
   );

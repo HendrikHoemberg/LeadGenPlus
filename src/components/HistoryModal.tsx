@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSettings } from '../context/useSettings';
+import { useTranslation } from '../translations';
 import type { LeadQuery } from '../types';
 import { downloadPDF } from '../utils/claudeAPI';
 
@@ -10,7 +11,8 @@ interface HistoryModalProps {
 }
 
 const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuery }) => {
-  const { darkMode } = useSettings();
+  const { darkMode, language } = useSettings();
+  const t = useTranslation(language);
   const [queries, setQueries] = React.useState<LeadQuery[]>([]);
 
   React.useEffect(() => {
@@ -55,11 +57,11 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
         </button>
 
         <h2 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Query History
+          {t.historyTitle}
         </h2>
 
         <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          All queries that have been generated with results. Use "Saved" for manually saved queries.
+          {t.historyDescription}
         </p>
 
         <div className="flex-1 overflow-y-auto space-y-4">
@@ -68,8 +70,8 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
               <svg className="mx-auto h-16 w-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-lg">No generated queries yet</p>
-              <p className="text-sm mt-2">Generate leads to see them here</p>
+              <p className="text-lg">{t.noHistory}</p>
+              <p className="text-sm mt-2">{t.noHistoryDesc}</p>
             </div>
           ) : (
             queries.map((query) => (
@@ -96,22 +98,22 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
                     <svg className="w-3 h-3 inline-block mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    Generated
+                    {t.generated}
                   </div>
                 </div>
                 
                 <div className={`text-sm space-y-1 mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <p><span className="font-medium">Locations:</span> {query.locations.join(', ')}</p>
-                  <p><span className="font-medium">Industries:</span> {query.industry.join(', ')}</p>
+                  <p><span className="font-medium">{t.locations}:</span> {query.locations.join(', ')}</p>
+                  <p><span className="font-medium">{t.industries}:</span> {query.industry.join(', ')}</p>
                   <p>
-                    <span className="font-medium">Company Size:</span> {query.companySizeMin || 'Any'} - {query.companySizeMax || 'Any'} employees
+                    <span className="font-medium">{t.companySize}:</span> {query.companySizeMin || t.any} - {query.companySizeMax || t.any} {t.employees}
                   </p>
                   {query.personas.length > 0 && (
-                    <p><span className="font-medium">Personas:</span> {query.personas.join(', ')}</p>
+                    <p><span className="font-medium">{t.personas}:</span> {query.personas.join(', ')}</p>
                   )}
                   {query.outputFields && query.outputFields.filter(f => f.enabled).length > 0 && (
                     <p>
-                      <span className="font-medium">Output Fields:</span> {query.outputFields.filter(f => f.enabled).map(f => f.label).join(', ')}
+                      <span className="font-medium">{t.outputFields}:</span> {query.outputFields.filter(f => f.enabled).map(f => f.label).join(', ')}
                     </p>
                   )}
                 </div>
@@ -128,7 +130,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
                         : 'bg-blue-500 text-white hover:bg-blue-600'
                     }`}
                   >
-                    Load Query
+                    {t.loadQuery}
                   </button>
                   <button
                     onClick={() => handleExport(query)}
@@ -138,7 +140,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
                         : 'bg-green-500 text-white hover:bg-green-600'
                     }`}
                   >
-                    Download PDF
+                    {t.downloadPDF}
                   </button>
                   <button
                     onClick={() => handleDelete(query.id)}
@@ -148,7 +150,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, onLoadQuer
                         : 'bg-red-500 text-white hover:bg-red-600'
                     }`}
                   >
-                    Delete
+                    {t.delete}
                   </button>
                 </div>
               </div>
