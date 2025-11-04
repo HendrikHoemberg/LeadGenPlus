@@ -6,8 +6,8 @@ import { SettingsContext } from './SettingsContext.ts';
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [apiKey, setApiKeyState] = useState<string>('');
   const [geminiApiKey, setGeminiApiKeyState] = useState<string>('');
-  const [aiProvider, setAiProviderState] = useState<AIProvider>('claude');
-  const [geminiModel, setGeminiModelState] = useState<GeminiModel>('gemini-2.5-flash');
+  const [aiProvider, setAiProviderState] = useState<AIProvider>('gemini');
+  const [geminiModel, setGeminiModelState] = useState<GeminiModel>('gemini-2.5-pro');
   const [darkMode, setDarkMode] = useState<boolean>(true);
 
   useEffect(() => {
