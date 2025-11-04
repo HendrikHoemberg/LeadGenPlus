@@ -1,3 +1,4 @@
+import { GoogleGenAI } from '@google/genai';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -23,10 +24,14 @@ app.get('/health', (req, res) => {
 // Proxy endpoint for Anthropic API
 app.post('/api/generate-leads', async (req, res) => {
   try {
-    const { formData, apiKey } = req.body;
+    const { formData, apiKey, aiProvider = 'claude', geminiModel = 'gemini-2.5-flash' } = req.body;
 
     if (!apiKey) {
       return res.status(400).json({ error: 'API key is required' });
+    }
+
+    if (!aiProvider || !['claude', 'gemini'].includes(aiProvider)) {
+      return res.status(400).json({ error: 'Invalid AI provider. Must be "claude" or "gemini"' });
     }
 
     const enabledFields = formData.outputFields
@@ -66,7 +71,7 @@ LOOSE SEARCH MODE (FLEXIBLE):
     const prompt = `You are a professional lead generation expert with web search capabilities. Your task is to research and provide practical, actionable contact information for qualified leads.
 
 CRITICAL REQUIREMENTS:
-1. Use the web_search tool to find real, current information about companies matching the criteria
+1. Use the web_search tool (Claude) or google_search tool (Gemini) to find real, current information about companies matching the criteria
 2. Search for companies in the specified locations and industries
 3. Provide contact information found through reliable public sources
 4. DO NOT generate fictional, exemplary, or placeholder data
@@ -170,57 +175,99 @@ ${searchMode === 'accurate' ? '- CRITICAL: Present ONLY the structured lead data
 
 Begin your web search and provide ONLY the structured lead data now - no preamble or explanations.`;
 
-    // Call Anthropic API with web search tool
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        tools: [
-          {
-            type: 'web_search_20250305',
-            name: 'web_search',
-            max_uses: 100
-          }
-        ]
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return res.status(response.status).json({
-        error: errorData.error?.message || `API Error: ${response.status} ${response.statusText}`,
-      });
-    }
-
-    const data = await response.json();
-    
-    // Extract all text content from the response (web search may return multiple content blocks)
     let content = '';
     let citations = [];
-    
-    if (data.content && Array.isArray(data.content)) {
-      // Extract text blocks
-      const textBlocks = data.content.filter(block => block.type === 'text');
-      content = textBlocks.map(block => block.text).join('\n\n');
-      
-      // Extract citations
-      textBlocks.forEach(block => {
-        if (block.citations && Array.isArray(block.citations)) {
-          citations.push(...block.citations);
-        }
+
+    // Route to appropriate AI provider
+    if (aiProvider === 'claude') {
+      // Call Anthropic API with web search tool
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 4096,
+          messages: [
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          tools: [
+            {
+              type: 'web_search_20250305',
+              name: 'web_search',
+              max_uses: 100
+            }
+          ]
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return res.status(response.status).json({
+          error: errorData.error?.message || `API Error: ${response.status} ${response.statusText}`,
+        });
+      }
+
+      const data = await response.json();
+      
+      // Extract all text content from the response (web search may return multiple content blocks)
+      if (data.content && Array.isArray(data.content)) {
+        // Extract text blocks
+        const textBlocks = data.content.filter(block => block.type === 'text');
+        content = textBlocks.map(block => block.text).join('\n\n');
+        
+        // Extract citations
+        textBlocks.forEach(block => {
+          if (block.citations && Array.isArray(block.citations)) {
+            citations.push(...block.citations);
+          }
+        });
+      }
+    } else if (aiProvider === 'gemini') {
+      // Call Google Gemini API with google_search tool
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const groundingTool = {
+        googleSearch: {},
+      };
+      
+      const config = {
+        tools: [groundingTool],
+      };
+      
+      const result = await ai.models.generateContent({
+        model: geminiModel,
+        contents: prompt,
+        config,
+      });
+      
+      // Extract text content
+      content = result.text;
+      
+      // Extract grounding metadata if available
+      if (result.candidates && result.candidates[0]?.groundingMetadata) {
+        const metadata = result.candidates[0].groundingMetadata;
+        
+        // Convert grounding chunks to citations format
+        if (metadata.groundingChunks) {
+          citations = metadata.groundingChunks.map((chunk, idx) => {
+            if (chunk.web) {
+              return {
+                title: chunk.web.title || `Source ${idx + 1}`,
+                url: chunk.web.uri,
+                cited_text: '' // Gemini doesn't provide cited text in the same way
+              };
+            }
+            return null;
+          }).filter(Boolean);
+        }
+      }
     }
 
     // Generate PDF
@@ -230,7 +277,9 @@ Begin your web search and provide ONLY the structured lead data now - no preambl
     res.json({
       pdfBase64,
       summary: content.substring(0, 200) + '...',
-      webSearchUsed: data.usage?.server_tool_use?.web_search_requests || 0
+      webSearchUsed: aiProvider === 'claude' 
+        ? (data?.usage?.server_tool_use?.web_search_requests || 0)
+        : 'N/A'
     });
   } catch (error) {
     console.error('Error generating leads:', error);
@@ -284,57 +333,138 @@ function generatePDF(content, citations, formData) {
       // Reset position after header
       doc.y = 130;
 
-      // Search criteria box with enhanced styling
-      const criteriaY = doc.y;
+      // Search criteria box with enhanced styling - compact version
       const criteriaX = 60;
       const criteriaWidth = doc.page.width - 120;
+      const criteriaBoxPadding = 12;
+      const startY = doc.y;
       
-      // Box background
-      doc.roundedRect(criteriaX, criteriaY, criteriaWidth, 0, 8)
-         .lineWidth(0);
+      // First pass: calculate actual content height with tighter spacing
+      let maxLeftY = startY + 45;
+      let maxRightY = startY + 45;
       
-      doc.moveDown(0.8);
+      // Calculate left column height
+      const valueWidth = (criteriaWidth / 2) - criteriaBoxPadding - 15;
       
-      // Criteria header with icon-like symbol
-      doc.fontSize(14).fillColor('#7c3aed').font('Helvetica-Bold').text('Search Criteria', { underline: false });
+      const descHeight = doc.heightOfString(formData.companyDescription || 'N/A', { width: valueWidth });
+      maxLeftY += 12 + descHeight + 8;
+      
+      const locHeight = doc.heightOfString(formData.locations?.length > 0 ? formData.locations.join(', ') : 'N/A', { width: valueWidth });
+      maxLeftY += 12 + locHeight + 8;
+      
+      const indHeight = doc.heightOfString(formData.industry?.length > 0 ? formData.industry.join(', ') : 'N/A', { width: valueWidth });
+      maxLeftY += 12 + indHeight + 8;
+      
+      // Calculate right column height with tighter spacing
+      maxRightY += 12 + 18; // Company size
+      const persHeight = doc.heightOfString(formData.personas?.length > 0 ? formData.personas.join(', ') : 'N/A', { width: valueWidth });
+      maxRightY += 12 + persHeight + 8; // Personas
+      maxRightY += 12 + 18; // Search mode
+      maxRightY += 12 + 15; // Max results
+      
+      const boxHeight = Math.max(maxLeftY, maxRightY) - startY + 15;
+      
+      // Draw background box FIRST
+      doc.save();
+      doc.rect(criteriaX, startY, criteriaWidth, boxHeight)
+         .fillAndStroke('#f9fafb', '#e5e7eb');
+      doc.restore();
+      
+      // Draw vertical separator between columns
+      doc.save();
+      doc.moveTo(criteriaX + (criteriaWidth / 2), startY + 30)
+         .lineTo(criteriaX + (criteriaWidth / 2), startY + boxHeight - 10)
+         .lineWidth(1)
+         .strokeColor('#e5e7eb')
+         .stroke();
+      doc.restore();
+      
+      // Now draw text ON TOP of the background
+      doc.moveDown(0.3);
+      
+      // Criteria header - smaller and more compact
+      doc.fontSize(12).fillColor('#7c3aed').font('Helvetica-Bold').text('Search Criteria', criteriaX + criteriaBoxPadding, doc.y);
       doc.moveDown(0.5);
       
-      // Criteria content
-      doc.fontSize(10).font('Helvetica').fillColor('#1f2937');
+      // Use a grid layout for better organization
+      const leftColumnX = criteriaX + criteriaBoxPadding;
+      const rightColumnX = criteriaX + (criteriaWidth / 2) + 10;
       
-      if (formData.companyDescription) {
-        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Description: ', { continued: true });
-        doc.font('Helvetica').fillColor('#1f2937').text(formData.companyDescription, { width: criteriaWidth - 40 });
-        doc.moveDown(0.3);
-      }
-      if (formData.locations?.length > 0) {
-        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Locations: ', { continued: true });
-        doc.font('Helvetica').fillColor('#1f2937').text(formData.locations.join(', '));
-        doc.moveDown(0.3);
-      }
-      if (formData.industry?.length > 0) {
-        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Industries: ', { continued: true });
-        doc.font('Helvetica').fillColor('#1f2937').text(formData.industry.join(', '));
-        doc.moveDown(0.3);
-      }
-      if (formData.companySizeMin || formData.companySizeMax) {
-        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Company Size: ', { continued: true });
-        doc.font('Helvetica').fillColor('#1f2937').text(`${formData.companySizeMin || 'Any'} - ${formData.companySizeMax || 'Any'} employees`);
-        doc.moveDown(0.3);
-      }
-      if (formData.personas?.length > 0) {
-        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Target Personas: ', { continued: true });
-        doc.font('Helvetica').fillColor('#1f2937').text(formData.personas.join(', '));
-        doc.moveDown(0.3);
-      }
-      if (formData.searchMode) {
-        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Search Mode: ', { continued: true });
-        doc.font('Helvetica').fillColor(formData.searchMode === 'accurate' ? '#7c3aed' : '#a855f7')
-           .text(formData.searchMode === 'accurate' ? 'Accurate' : 'Loose');
-        doc.moveDown(0.3);
-      }
+      let currentY = doc.y;
       
-      doc.moveDown(0.5);
+      // Left Column - more compact
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('DESCRIPTION', leftColumnX, currentY);
+      currentY += 12;
+      doc.fontSize(8).font('Helvetica').fillColor('#1f2937').text(
+        formData.companyDescription || 'N/A', 
+        leftColumnX, 
+        currentY, 
+        { width: valueWidth, align: 'left' }
+      );
+      currentY += descHeight + 8;
+      
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('LOCATIONS', leftColumnX, currentY);
+      currentY += 12;
+      doc.fontSize(8).font('Helvetica').fillColor('#1f2937').text(
+        formData.locations?.length > 0 ? formData.locations.join(', ') : 'N/A', 
+        leftColumnX, 
+        currentY,
+        { width: valueWidth }
+      );
+      currentY += locHeight + 8;
+      
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('INDUSTRIES', leftColumnX, currentY);
+      currentY += 12;
+      doc.fontSize(8).font('Helvetica').fillColor('#1f2937').text(
+        formData.industry?.length > 0 ? formData.industry.join(', ') : 'N/A', 
+        leftColumnX, 
+        currentY,
+        { width: valueWidth }
+      );
+      
+      // Right Column - more compact
+      currentY = startY + 45; // Reset to top for right column
+      
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('COMPANY SIZE', rightColumnX, currentY);
+      currentY += 12;
+      doc.fontSize(8).font('Helvetica').fillColor('#1f2937').text(
+        `${formData.companySizeMin || 'Any'} - ${formData.companySizeMax || 'Any'} employees`,
+        rightColumnX,
+        currentY,
+        { width: valueWidth }
+      );
+      currentY += 18;
+      
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('TARGET PERSONAS', rightColumnX, currentY);
+      currentY += 12;
+      doc.fontSize(8).font('Helvetica').fillColor('#1f2937').text(
+        formData.personas?.length > 0 ? formData.personas.join(', ') : 'N/A',
+        rightColumnX,
+        currentY,
+        { width: valueWidth }
+      );
+      currentY += persHeight + 8;
+      
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('SEARCH MODE', rightColumnX, currentY);
+      currentY += 12;
+      const searchModeText = formData.searchMode === 'accurate' ? 'Accurate (Quality)' : 'Loose (Quantity)';
+      doc.fontSize(8).font('Helvetica').fillColor(formData.searchMode === 'accurate' ? '#7c3aed' : '#a855f7').text(
+        searchModeText,
+        rightColumnX,
+        currentY
+      );
+      currentY += 18;
+      
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('MAX RESULTS', rightColumnX, currentY);
+      currentY += 12;
+      doc.fontSize(8).font('Helvetica').fillColor('#1f2937').text(
+        `${formData.maxResults || 10} leads`,
+        rightColumnX,
+        currentY
+      );
+      
+      // Update Y position to after the box
+      doc.y = startY + boxHeight + 10;
       
       doc.moveDown(1.5);
 
@@ -462,6 +592,27 @@ function renderMarkdownToPDF(doc, markdown) {
       if (inList) { inList = false; listIndent = 0; }
       const headerText = trimmedLine.replace(/^##\s+/, '');
       leadCount++;
+      
+      // Estimate the height needed for this lead (header + typical content)
+      // Look ahead to count bullet points for this lead
+      let bulletCount = 0;
+      for (let j = i + 1; j < lines.length && j < i + 20; j++) {
+        const nextLine = lines[j].trim();
+        if (nextLine.match(/^##\s+(.+)/)) {
+          break; // Next lead found
+        }
+        if (nextLine.match(/^[-*]\s+(.+)/)) {
+          bulletCount++;
+        }
+      }
+      
+      // Estimate height: header (30) + bullets (bulletCount * 20) + padding (40)
+      const estimatedLeadHeight = 30 + (bulletCount * 20) + 40;
+      
+      // Check if lead fits on current page, if not start new page
+      if (doc.y + estimatedLeadHeight > doc.page.height - 80) {
+        doc.addPage();
+      }
       
       // Add spacing before new lead (except first)
       if (leadCount > 1) {

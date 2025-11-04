@@ -1,3 +1,6 @@
+export type AIProvider = 'claude' | 'gemini';
+export type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
+
 export interface OutputField {
   id: string;
   label: string;

@@ -6,7 +6,7 @@ import SettingsModal from './components/SettingsModal';
 import TagInput from './components/TagInput';
 import { useSettings } from './context/useSettings';
 import type { FormData, LeadQuery, OutputField } from './types';
-import { downloadPDF, generateLeads } from './utils/claudeAPI';
+import { downloadPDF, generateLeads } from './utils/apiService';
 
 const DEFAULT_OUTPUT_FIELDS: OutputField[] = [
   { id: '1', label: 'Unternehmensname', enabled: true, required: true },
@@ -19,7 +19,7 @@ const DEFAULT_OUTPUT_FIELDS: OutputField[] = [
 ];
 
 function App() {
-  const { apiKey, darkMode } = useSettings();
+  const { apiKey, geminiApiKey, aiProvider, geminiModel, darkMode } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savedQueriesOpen, setSavedQueriesOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -113,8 +113,12 @@ function App() {
   };
 
   const handleGenerateLeads = async () => {
-    if (!apiKey) {
-      setError('Please set your Anthropic API key in Settings');
+    // Validate API key based on provider
+    const currentApiKey = aiProvider === 'claude' ? apiKey : geminiApiKey;
+    const providerName = aiProvider === 'claude' ? 'Anthropic' : 'Google Gemini';
+    
+    if (!currentApiKey) {
+      setError(`Please set your ${providerName} API key in Settings`);
       return;
     }
 
@@ -128,11 +132,11 @@ function App() {
     setSuccess('');
 
     try {
-      const result = await generateLeads(formData, apiKey);
+      const result = await generateLeads(formData, aiProvider, currentApiKey, geminiModel);
       saveQuery(result.pdfBase64);
       downloadPDF(result.pdfBase64, `leads_${Date.now()}.pdf`);
       
-      let successMessage = 'Leads generated successfully! Check your downloads.';
+      let successMessage = `Leads generated successfully with ${providerName}! Check your downloads.`;
       if (formData.searchMode === 'accurate') {
         successMessage += ' (Accurate mode: Only complete leads with all required fields included)';
       }
