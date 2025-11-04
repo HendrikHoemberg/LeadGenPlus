@@ -118,7 +118,7 @@ PRACTICAL GUIDANCE FOR CONTACT INFORMATION:
 FORMATTING INSTRUCTIONS:
 Your output will be converted to PDF. Use clean, professional Markdown formatting:
 - Use ## for main section headers (e.g., "## Lead 1: Company Name")
-- Use ### for sub-headers (e.g., "### Contact Information")
+- Use ### for sub-headers if needed (e.g., "### Contact Information")
 - Use **bold** for field labels (e.g., **Unternehmensname:** Company GmbH)
 - Use - or * for bullet points
 - Separate each lead with clear headers
@@ -126,17 +126,49 @@ Your output will be converted to PDF. Use clean, professional Markdown formattin
 - DO NOT use excessive markdown symbols or complex formatting
 - Present data in a clean, scannable format
 
+OUTPUT FORMAT - FOLLOW THIS STRUCTURE EXACTLY:
+
+## Lead 1: [Company Name]
+* **Unternehmensname:** [Full company name]
+* **Ansprechpartner:** [Contact person name]
+* **Position:** [Job title]
+* **Telefonnummer:** [Phone number]
+* **E-Mail:** [Email address]
+* **Ort:** [City/Location]
+* **Website:** [Company website]
+
+## Lead 2: [Company Name]
+* **Unternehmensname:** [Full company name]
+* **Ansprechpartner:** [Contact person name]
+* **Position:** [Job title]
+* **Telefonnummer:** [Phone number]
+* **E-Mail:** [Email address]
+* **Ort:** [City/Location]
+* **Website:** [Company website]
+
+[Continue for all leads...]
+
+CRITICAL OUTPUT RULES:
+1. DO NOT include any introductory text, explanations, or commentary before the leads
+2. DO NOT include phrases like "I'll search for..." or "Based on my research..."
+3. DO NOT add disclaimers or apologetic messages about data availability
+4. START IMMEDIATELY with "## Lead 1: [Company Name]"
+5. Use ONLY the bullet point format shown above for each lead
+6. Do NOT wrap field values in parentheses or add extra notes
+7. Keep the output clean and structured - ONLY the lead data
+8. After all leads, you may add a "## Sources & Citations" section with numbered references
+
 OUTPUT INSTRUCTIONS:
 - Use web search to find real companies matching these criteria
-- Present each lead with clear ## headers for company names
-- For each field, use **field name:** followed by the value
+- Present ONLY the leads in the exact format shown above
+- Start directly with ## Lead 1: [Company Name] - NO preamble
 - Include the best available contact information from company sources
 - If specific HR contact isn't public, use general company contact (phone/email from contact page)
-${searchMode === 'accurate' ? '- CRITICAL: Do NOT include apologetic messages, disclaimers, or explanations about data limitations. Just present the leads with available information.' : '- If specific information truly is not available, state "Not publicly available" for that field'}
+${searchMode === 'accurate' ? '- CRITICAL: Present ONLY the structured lead data. NO explanations, disclaimers, or commentary.' : '- If specific information truly is not available, state "Not publicly available" for that field'}
 - Organize leads with clear separations between each company
 - Stop after finding ${maxResults} qualifying leads
 
-Begin your web search and provide the lead information now.`;
+Begin your web search and provide ONLY the structured lead data now - no preamble or explanations.`;
 
     // Call Anthropic API with web search tool
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -214,7 +246,7 @@ function generatePDF(content, citations, formData) {
     try {
       const doc = new PDFDocument({
         size: 'A4',
-        margins: { top: 50, bottom: 50, left: 50, right: 50 }
+        margins: { top: 60, bottom: 60, left: 60, right: 60 }
       });
 
       const buffers = [];
@@ -225,51 +257,98 @@ function generatePDF(content, citations, formData) {
       });
       doc.on('error', reject);
 
-      // Header
-      doc.fontSize(24).font('Helvetica-Bold').fillColor('#1a56db').text('LeadGen Plus', { align: 'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(16).fillColor('#4b5563').text('Lead Generation Report', { align: 'center' });
-      doc.moveDown(1);
+      // Helper to draw a gradient-like header bar
+      const drawHeaderBar = () => {
+        // Purple gradient effect with rectangles
+        doc.rect(0, 0, doc.page.width, 120).fill('#6d28d9');
+        doc.rect(0, 0, doc.page.width, 100).fill('#7c3aed');
+        doc.rect(0, 0, doc.page.width, 80).fill('#a855f7');
+      };
 
-      // Metadata section
-      doc.fontSize(10).fillColor('#6b7280');
-      doc.text(`Generated: ${new Date().toLocaleDateString('de-DE', { 
+      // Header with styled background
+      drawHeaderBar();
+      
+      // Title
+      doc.fontSize(32).font('Helvetica-Bold').fillColor('#ffffff').text('LeadGen Plus', 60, 25);
+      doc.fontSize(14).font('Helvetica').fillColor('#e0e7ff').text('Lead Generation Report', 60, 60);
+      
+      // Date badge
+      const dateStr = new Date().toLocaleDateString('de-DE', { 
         year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-      })}`, { align: 'right' });
-      doc.moveDown(1);
+      });
+      const dateWidth = doc.widthOfString(dateStr);
+      doc.roundedRect(doc.page.width - dateWidth - 90, 30, dateWidth + 30, 25, 5)
+         .fill('#5b21b6');
+      doc.fontSize(9).font('Helvetica').fillColor('#ffffff').text(dateStr, doc.page.width - dateWidth - 75, 38);
+      
+      // Reset position after header
+      doc.y = 130;
 
-      // Search criteria box
+      // Search criteria box with enhanced styling
       const criteriaY = doc.y;
+      const criteriaX = 60;
+      const criteriaWidth = doc.page.width - 120;
+      
+      // Box background
+      doc.roundedRect(criteriaX, criteriaY, criteriaWidth, 0, 8)
+         .lineWidth(0);
+      
+      doc.moveDown(0.8);
+      
+      // Criteria header with icon-like symbol
+      doc.fontSize(14).fillColor('#7c3aed').font('Helvetica-Bold').text('Search Criteria', { underline: false });
       doc.moveDown(0.5);
       
-      doc.fontSize(12).fillColor('#111827').font('Helvetica-Bold').text('Search Criteria', { underline: true });
-      doc.moveDown(0.3);
-      doc.fontSize(10).font('Helvetica').fillColor('#374151');
+      // Criteria content
+      doc.fontSize(10).font('Helvetica').fillColor('#1f2937');
       
       if (formData.companyDescription) {
-        doc.text(`Description: ${formData.companyDescription}`, { width: doc.page.width - 120 });
+        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Description: ', { continued: true });
+        doc.font('Helvetica').fillColor('#1f2937').text(formData.companyDescription, { width: criteriaWidth - 40 });
+        doc.moveDown(0.3);
       }
       if (formData.locations?.length > 0) {
-        doc.text(`Locations: ${formData.locations.join(', ')}`);
+        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Locations: ', { continued: true });
+        doc.font('Helvetica').fillColor('#1f2937').text(formData.locations.join(', '));
+        doc.moveDown(0.3);
       }
       if (formData.industry?.length > 0) {
-        doc.text(`Industries: ${formData.industry.join(', ')}`);
+        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Industries: ', { continued: true });
+        doc.font('Helvetica').fillColor('#1f2937').text(formData.industry.join(', '));
+        doc.moveDown(0.3);
       }
       if (formData.companySizeMin || formData.companySizeMax) {
-        doc.text(`Company Size: ${formData.companySizeMin || 'Any'} - ${formData.companySizeMax || 'Any'} employees`);
+        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Company Size: ', { continued: true });
+        doc.font('Helvetica').fillColor('#1f2937').text(`${formData.companySizeMin || 'Any'} - ${formData.companySizeMax || 'Any'} employees`);
+        doc.moveDown(0.3);
       }
       if (formData.personas?.length > 0) {
-        doc.text(`Target Personas: ${formData.personas.join(', ')}`);
+        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Target Personas: ', { continued: true });
+        doc.font('Helvetica').fillColor('#1f2937').text(formData.personas.join(', '));
+        doc.moveDown(0.3);
+      }
+      if (formData.searchMode) {
+        doc.font('Helvetica-Bold').fillColor('#7c3aed').text('Search Mode: ', { continued: true });
+        doc.font('Helvetica').fillColor(formData.searchMode === 'accurate' ? '#7c3aed' : '#a855f7')
+           .text(formData.searchMode === 'accurate' ? 'Accurate' : 'Loose');
+        doc.moveDown(0.3);
       }
       
       doc.moveDown(0.5);
-      const boxHeight = doc.y - criteriaY;
-      doc.rect(50, criteriaY, doc.page.width - 100, boxHeight).lineWidth(1).strokeColor('#e5e7eb').stroke();
-      doc.moveDown(1);
+      
+      doc.moveDown(1.5);
 
-      // Main content
-      doc.fontSize(14).fillColor('#111827').font('Helvetica-Bold').text('Lead Results', { underline: true });
-      doc.moveDown(0.5);
+      // Main content header with icon
+      doc.fontSize(16).fillColor('#7c3aed').font('Helvetica-Bold').text('Lead Results', 60, doc.y, { align: 'left' });
+      
+      // Decorative line under header
+      doc.moveTo(60, doc.y + 5)
+         .lineTo(doc.page.width - 60, doc.y + 5)
+         .lineWidth(2)
+         .strokeColor('#7c3aed')
+         .stroke();
+      
+      doc.moveDown(1);
 
       // Parse Markdown and render to PDF
       renderMarkdownToPDF(doc, content);
@@ -282,32 +361,54 @@ function generatePDF(content, citations, formData) {
           doc.moveDown(2);
         }
         
-        doc.fontSize(14).fillColor('#111827').font('Helvetica-Bold').text('Sources & Citations', { underline: true });
-        doc.moveDown(0.5);
+        // Citations header with icon
+        doc.fontSize(16).fillColor('#7c3aed').font('Helvetica-Bold').text('Sources & Citations', { underline: false });
+        
+        // Decorative line
+        doc.moveTo(60, doc.y + 5)
+           .lineTo(doc.page.width - 60, doc.y + 5)
+           .lineWidth(2)
+           .strokeColor('#7c3aed')
+           .stroke();
+        
+        doc.moveDown(1);
 
         citations.forEach((citation, idx) => {
           if (doc.y > doc.page.height - 100) {
             doc.addPage();
           }
           
-          doc.fontSize(9).font('Helvetica-Bold').fillColor('#4b5563');
-          doc.text(`[${idx + 1}] ${citation.title || 'Source'}`, { link: citation.url, underline: true, color: '#1a56db' });
+          // Citation box
+          const citationY = doc.y;
+          doc.fontSize(9).font('Helvetica-Bold').fillColor('#7c3aed');
+          doc.text(`[${idx + 1}] ${citation.title || 'Source'}`, { link: citation.url, underline: true });
+          
           if (citation.url) {
             doc.fontSize(8).font('Helvetica').fillColor('#6b7280').text(citation.url, { indent: 20 });
           }
           if (citation.cited_text) {
             doc.fontSize(8).fillColor('#374151').text(`"${citation.cited_text}"`, { indent: 20 });
           }
+          
+          // Subtle separator line
+          doc.moveDown(0.2);
+          doc.moveTo(60, doc.y)
+             .lineTo(doc.page.width - 60, doc.y)
+             .lineWidth(0.5)
+             .strokeColor('#e5e7eb')
+             .stroke();
           doc.moveDown(0.3);
         });
       }
 
-      // Footer on last page
-      doc.fontSize(8).fillColor('#9ca3af').text(
+      // Footer on last page with enhanced styling
+      const footerY = doc.page.height - 40;
+      doc.rect(0, footerY - 10, doc.page.width, 50).fill('#f3f4f6');
+      doc.fontSize(8).font('Helvetica').fillColor('#6b7280').text(
         'Generated by LeadGen Plus - AI-Powered Lead Generation',
-        50,
-        doc.page.height - 30,
-        { align: 'center', width: doc.page.width - 100 }
+        60,
+        footerY,
+        { align: 'center', width: doc.page.width - 120 }
       );
 
       doc.end();
@@ -322,10 +423,11 @@ function renderMarkdownToPDF(doc, markdown) {
   const lines = markdown.split('\n');
   let inList = false;
   let listIndent = 0;
+  let leadCount = 0;
   
   for (let i = 0; i < lines.length; i++) {
     // Check if we need a new page
-    if (doc.y > doc.page.height - 100) {
+    if (doc.y > doc.page.height - 120) {
       doc.addPage();
     }
 
@@ -346,15 +448,46 @@ function renderMarkdownToPDF(doc, markdown) {
     if (trimmedLine.match(/^###\s+(.+)/)) {
       if (inList) { inList = false; listIndent = 0; }
       const headerText = trimmedLine.replace(/^###\s+/, '');
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a56db').text(headerText);
-      doc.moveDown(0.4);
+      
+      // Sub-header with background
+      const subHeaderY = doc.y;
+      doc.roundedRect(60, subHeaderY - 2, doc.page.width - 120, 20, 3)
+         .fill('#e9d5ff');
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#7c3aed').text(headerText, 65, subHeaderY);
+      doc.moveDown(0.8);
       continue;
     }
     
     if (trimmedLine.match(/^##\s+(.+)/)) {
       if (inList) { inList = false; listIndent = 0; }
       const headerText = trimmedLine.replace(/^##\s+/, '');
-      doc.fontSize(13).font('Helvetica-Bold').fillColor('#1a56db').text(headerText);
+      leadCount++;
+      
+      // Add spacing before new lead (except first)
+      if (leadCount > 1) {
+        doc.moveDown(0.5);
+      }
+      
+      // Lead header with styled box
+      const leadHeaderY = doc.y;
+      const leadHeaderHeight = 28;
+      
+      // Shadow effect
+      doc.roundedRect(62, leadHeaderY + 2, doc.page.width - 124, leadHeaderHeight, 5)
+         .fill('#d1d5db');
+      
+      // Main header box with gradient-like effect - now purple
+      doc.roundedRect(60, leadHeaderY, doc.page.width - 120, leadHeaderHeight, 5)
+         .fill('#a855f7');
+      
+      // Lead number badge - centered
+      doc.circle(75, leadHeaderY + 14, 10).fill('#7c3aed');
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#ffffff').text(leadCount.toString(), 70, leadHeaderY + 9, { align: 'center', width: 10 });
+      
+      // Lead title
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#ffffff').text(headerText, 95, leadHeaderY + 7);
+      
+      doc.y = leadHeaderY + leadHeaderHeight;
       doc.moveDown(0.5);
       continue;
     }
@@ -368,11 +501,17 @@ function renderMarkdownToPDF(doc, markdown) {
       // Process inline markdown in bullet text
       const processedText = processInlineMarkdown(bulletText);
       
-      doc.fontSize(10).fillColor('#111827');
-      doc.x = 50 + listIndent;
-      doc.text('• ', { continued: true, font: 'Helvetica' });
-      renderInlineFormattedText(doc, processedText);
-      doc.moveDown(0.2);
+      // Alternating background for better readability
+      if (leadCount % 2 === 0) {
+        doc.rect(60, doc.y - 2, doc.page.width - 120, 18).fill('#fafafa');
+      }
+      
+  doc.fontSize(10).fillColor('#1f2937');
+  doc.x = 60 + listIndent;
+  // Use WinAnsi-supported bullet to avoid encoding artifacts
+  doc.fillColor('#a855f7').font('Helvetica').text('• ', { continued: true });
+  renderInlineFormattedText(doc, processedText);
+      doc.moveDown(0.3);
       continue;
     }
 
@@ -384,9 +523,19 @@ function renderMarkdownToPDF(doc, markdown) {
     
     // Process inline markdown
     const processedText = processInlineMarkdown(trimmedLine);
-    doc.fontSize(10).fillColor('#111827');
+    doc.fontSize(10).fillColor('#1f2937');
     renderInlineFormattedText(doc, processedText);
     doc.moveDown(0.3);
+  }
+  
+  // Add a final separator after all leads
+  if (leadCount > 0) {
+    doc.moveDown(0.5);
+    doc.moveTo(60, doc.y)
+       .lineTo(doc.page.width - 60, doc.y)
+       .lineWidth(1)
+       .strokeColor('#a855f7')
+       .stroke();
   }
 }
 
@@ -438,20 +587,38 @@ function processInlineMarkdown(text) {
 
 // Render text with inline formatting
 function renderInlineFormattedText(doc, segments) {
+  // Manage font/color state changes explicitly to avoid PDF encoding glitches
+  let currentFont = 'Helvetica';
+  let currentColor = '#1f2937';
+
   segments.forEach((segment, index) => {
     const isLast = index === segments.length - 1;
-    
-    switch (segment.type) {
-      case 'bold':
-        doc.font('Helvetica-Bold').fillColor('#111827').text(segment.text, { continued: !isLast });
-        break;
-      case 'code':
-        doc.font('Courier').fillColor('#374151').text(segment.text, { continued: !isLast });
-        break;
-      default:
-        doc.font('Helvetica').fillColor('#111827').text(segment.text, { continued: !isLast });
+
+    let newFont = 'Helvetica';
+    let newColor = '#1f2937';
+
+    if (segment.type === 'bold') {
+      newFont = 'Helvetica-Bold';
+      newColor = '#7c3aed';
+    } else if (segment.type === 'code') {
+      newFont = 'Courier';
+      newColor = '#7c3aed';
     }
+
+    if (newFont !== currentFont) {
+      doc.font(newFont);
+      currentFont = newFont;
+    }
+    if (newColor !== currentColor) {
+      doc.fillColor(newColor);
+      currentColor = newColor;
+    }
+
+    doc.text(segment.text, { continued: !isLast });
   });
+
+  // Reset defaults
+  doc.font('Helvetica').fillColor('#1f2937');
 }
 
 app.listen(PORT, () => {

@@ -10,7 +10,13 @@ An AI-powered lead generation tool that uses Claude's web search capabilities to
 - **Query Management**: Save and reuse successful search queries
 - **Search History**: Track all previous searches with PDF exports
 - **Dark Mode**: Toggle between light and dark themes
-- **PDF Export**: Automatically generates PDF reports with all found leads
+- **Enhanced PDF Export**: Automatically generates beautifully formatted PDF reports with:
+  - Professional blue gradient header design
+  - Numbered lead badges with styled boxes
+  - Color-coded field labels and values
+  - Citations with clickable links
+  - Modern rounded corners and shadows
+  - High-contrast, accessible color scheme
 - **Real-time Data**: Searches current web sources for up-to-date information
 
 ## Technology Stack
